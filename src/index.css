@@ -1,0 +1,12 @@
+/* Altura completa para toda la app */
+html, body, #root {
+  height: 100%;
+}
+
+/* Quita el margen por defecto del body */
+body {
+  margin: 0;
+}
+
+/* Opcional: mejora de layout */
+* { box-sizing: border-box; }
