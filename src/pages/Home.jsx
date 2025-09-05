@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { db } from "../firebase";
 import { doc, setDoc, getDoc } from "firebase/firestore";
-
+import ListaPacientes from "./ListaPacientes";
+import ListaDoctores from "./ListaDoctores";
 
 function Home() {
   const [activeTab, setActiveTab] = useState("pacientes");
@@ -14,43 +15,46 @@ function Home() {
     fechaNacimiento: "",
     edad: "",
     sintomas: "",
-    urgencia: ""
+    urgencia: "",
   });
 
   const handlePacienteChange = (e) => {
-  setPaciente({ ...paciente, [e.target.name]: e.target.value });
-};
+    setPaciente({ ...paciente, [e.target.name]: e.target.value });
+  };
 
-// 3️⃣ Modificar agregarPaciente para verificar expediente único
-const agregarPaciente = async (e) => {
-  e.preventDefault();
+  const agregarPaciente = async (e) => {
+    e.preventDefault();
 
-  if (!paciente.expediente) {
-    alert("❌ Debes ingresar un número de expediente.");
-    return;
-  }
-
-  try {
-    const docRef = doc(db, "pacientes", paciente.expediente);
-    const docSnap = await getDoc(docRef);
-
-    if (docSnap.exists()) {
-      alert("❌ Este número de expediente ya existe. Ingresa uno diferente.");
+    if (!paciente.expediente) {
+      alert("❌ Debes ingresar un número de expediente.");
       return;
     }
 
-    // Guardar paciente
-    await setDoc(docRef, paciente);
-    alert("✅ Paciente agregado en Firebase!");
+    try {
+      const docRef = doc(db, "pacientes", paciente.expediente);
+      const docSnap = await getDoc(docRef);
 
-    // Limpiar formulario
-    setPaciente({ expediente: "", nombre: "", fechaNacimiento: "", edad: "", sintomas: "", urgencia: "" });
-  } catch (e) {
-    console.error("❌ Error:", e);
-    alert("Error: revisa la consola");
-  }
-};
+      if (docSnap.exists()) {
+        alert("❌ Este número de expediente ya existe. Ingresa uno diferente.");
+        return;
+      }
 
+      await setDoc(docRef, paciente);
+      alert("✅ Paciente agregado en Firebase!");
+
+      setPaciente({
+        expediente: "",
+        nombre: "",
+        fechaNacimiento: "",
+        edad: "",
+        sintomas: "",
+        urgencia: "",
+      });
+    } catch (e) {
+      console.error("❌ Error:", e);
+      alert("Error: revisa la consola");
+    }
+  };
 
   // ---------------- FORM DOCTOR ----------------
   const [doctor, setDoctor] = useState({
@@ -58,7 +62,7 @@ const agregarPaciente = async (e) => {
     area: "",
     telefono: "",
     edificio: "",
-    consultorio: ""
+    consultorio: "",
   });
 
   const handleDoctorChange = (e) => {
@@ -71,7 +75,13 @@ const agregarPaciente = async (e) => {
       const doctorId = `${doctor.nombre}-${Date.now()}`;
       await setDoc(doc(db, "doctores", doctorId), doctor);
       alert("✅ Doctor agregado en Firebase!");
-      setDoctor({ nombre: "", area: "", telefono: "", edificio: "", consultorio: "" });
+      setDoctor({
+        nombre: "",
+        area: "",
+        telefono: "",
+        edificio: "",
+        consultorio: "",
+      });
     } catch (e) {
       console.error("❌ Error:", e);
       alert("Error: revisa la consola");
@@ -103,54 +113,80 @@ const agregarPaciente = async (e) => {
       />
 
       {/* Navbar */}
-     <nav
-  className="navbar navbar-expand-lg navbar-dark"
-  style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
->
-  <div className="container-fluid">
-    <a className="navbar-brand" href="#">
-      Hospital Vida
-    </a>
+      <nav
+        className="navbar navbar-expand-lg navbar-dark"
+        style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+      >
+        <div className="container-fluid">
+          <a className="navbar-brand" href="#">
+            Hospital Vida
+          </a>
 
-    {/* Botón hamburguesa */}
-    <button
-      className="navbar-toggler"
-      type="button"
-      data-bs-toggle="collapse"
-      data-bs-target="#navbarSupportedContent"
-      aria-controls="navbarSupportedContent"
-      aria-expanded="false"
-      aria-label="Toggle navigation"
-    >
-      <span className="navbar-toggler-icon"></span>
-    </button>
-
-    <div className="collapse navbar-collapse" id="navbarSupportedContent">
-      <ul className="navbar-nav me-auto mb-2 mb-lg-0">
-        <li className="nav-item">
+          {/* Botón hamburguesa */}
           <button
-            className={`nav-link btn btn-link ${activeTab === "pacientes" ? "active" : ""}`}
-            onClick={() => setActiveTab("pacientes")}
-            style={{ color: "#fff" }}
+            className="navbar-toggler"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent"
+            aria-expanded="false"
+            aria-label="Toggle navigation"
           >
-            Pacientes
+            <span className="navbar-toggler-icon"></span>
           </button>
-        </li>
-        <li className="nav-item">
-          <button
-            className={`nav-link btn btn-link ${activeTab === "doctores" ? "active" : ""}`}
-            onClick={() => setActiveTab("doctores")}
-            style={{ color: "#fff" }}
-          >
-            Doctores
-          </button>
-        </li>
-      </ul>
-    </div>
-  </div>
-</nav>
 
-      {/* Contenido centrado */}
+          <div className="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul className="navbar-nav me-auto mb-2 mb-lg-0">
+              <li className="nav-item">
+                <button
+                  className={`nav-link btn btn-link ${
+                    activeTab === "pacientes" ? "active" : ""
+                  }`}
+                  onClick={() => setActiveTab("pacientes")}
+                  style={{ color: "#fff" }}
+                >
+                  Pacientes
+                </button>
+              </li>
+              <li className="nav-item">
+                <button
+                  className={`nav-link btn btn-link ${
+                    activeTab === "doctores" ? "active" : ""
+                  }`}
+                  onClick={() => setActiveTab("doctores")}
+                  style={{ color: "#fff" }}
+                >
+                  Doctores
+                </button>
+              </li>
+              <li className="nav-item">
+                <button
+                  className={`nav-link btn btn-link ${
+                    activeTab === "listaPacientes" ? "active" : ""
+                  }`}
+                  onClick={() => setActiveTab("listaPacientes")}
+                  style={{ color: "#fff" }}
+                >
+                  Lista Pacientes
+                </button>
+              </li>
+              <li className="nav-item">
+                <button
+                  className={`nav-link btn btn-link ${
+                    activeTab === "listaDoctores" ? "active" : ""
+                  }`}
+                  onClick={() => setActiveTab("listaDoctores")}
+                  style={{ color: "#fff" }}
+                >
+                  Lista Doctores
+                </button>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+
+      {/* Contenido */}
       <main
         style={{
           flex: 1,
@@ -170,17 +206,20 @@ const agregarPaciente = async (e) => {
           }}
         >
           {activeTab === "pacientes" && (
-            <form onSubmit={agregarPaciente} style={{ textAlign: "left", maxWidth: 400, margin: "0 auto" }}>
+            <form
+              onSubmit={agregarPaciente}
+              style={{ textAlign: "left", maxWidth: 400, margin: "0 auto" }}
+            >
               <h2 className="text-center mb-3">Formulario de Pacientes</h2>
               <input
-  type="text"
-  name="expediente"
-  placeholder="Número de Expediente"
-  className="form-control mb-2"
-  value={paciente.expediente}
-  onChange={handlePacienteChange}
-  required
-/>
+                type="text"
+                name="expediente"
+                placeholder="Número de Expediente"
+                className="form-control mb-2"
+                value={paciente.expediente}
+                onChange={handlePacienteChange}
+                required
+              />
               <input
                 type="text"
                 name="nombre"
@@ -235,7 +274,10 @@ const agregarPaciente = async (e) => {
           )}
 
           {activeTab === "doctores" && (
-            <form onSubmit={agregarDoctor} style={{ textAlign: "left", maxWidth: 400, margin: "0 auto" }}>
+            <form
+              onSubmit={agregarDoctor}
+              style={{ textAlign: "left", maxWidth: 400, margin: "0 auto" }}
+            >
               <h2 className="text-center mb-3">Formulario de Doctores</h2>
               <input
                 type="text"
@@ -287,6 +329,10 @@ const agregarPaciente = async (e) => {
               </button>
             </form>
           )}
+
+          {/* 👇 Nuevas pestañas */}
+          {activeTab === "listaPacientes" && <ListaPacientes />}
+          {activeTab === "listaDoctores" && <ListaDoctores />}
         </section>
       </main>
 
