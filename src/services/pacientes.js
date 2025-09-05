@@ -2,19 +2,30 @@
 import { db } from "../firebase";
 import { doc, setDoc, getDoc, getDocs, collection } from "firebase/firestore";
 
-// Agregar paciente
+// Agregar paciente con verificación de expediente único
 export async function agregarPaciente(expediente, nombre, fechaNacimiento, edad, sintomas, urgencia) {
   try {
-    await setDoc(doc(db, "pacientes", expediente.toString()), {
+    const ref = doc(db, "pacientes", expediente.toString());
+    const snap = await getDoc(ref);
+
+    if (snap.exists()) {
+      console.warn("❌ Este número de expediente ya existe:", expediente);
+      return { success: false, message: "El expediente ya existe" };
+    }
+
+    await setDoc(ref, {
       nombre,
       fechaNacimiento,
       edad,
       sintomas,
       urgencia
     });
+
     console.log("✅ Paciente agregado:", expediente);
+    return { success: true };
   } catch (e) {
     console.error("❌ Error al agregar paciente:", e);
+    return { success: false, message: e.message };
   }
 }
 

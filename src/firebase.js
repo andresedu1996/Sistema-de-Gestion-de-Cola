@@ -4,13 +4,13 @@ import { getFirestore } from "firebase/firestore";
 
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCjVH_5a59d_kewT3-HD0ptSmJPeyrmnmM",
-  authDomain: "gestion-pacientes-2194a.firebaseapp.com",
-  projectId: "gestion-pacientes-2194a",
-  storageBucket: "gestion-pacientes-2194a.firebasestorage.app",
-  messagingSenderId: "148156220633",
-  appId: "1:148156220633:web:2c129f6bd15c03645aeac8",
-  measurementId: "G-Q6EKRMDRBE"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 

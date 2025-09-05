@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { db } from "../firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc } from "firebase/firestore";
+
 
 function Home() {
   const [activeTab, setActiveTab] = useState("pacientes");
@@ -8,6 +9,7 @@ function Home() {
 
   // ---------------- FORM PACIENTE ----------------
   const [paciente, setPaciente] = useState({
+    expediente: "",
     nombre: "",
     fechaNacimiento: "",
     edad: "",
@@ -16,21 +18,39 @@ function Home() {
   });
 
   const handlePacienteChange = (e) => {
-    setPaciente({ ...paciente, [e.target.name]: e.target.value });
-  };
+  setPaciente({ ...paciente, [e.target.name]: e.target.value });
+};
 
-  const agregarPaciente = async (e) => {
-    e.preventDefault();
-    try {
-      const pacienteId = `${paciente.nombre}-${Date.now()}`;
-      await setDoc(doc(db, "pacientes", pacienteId), paciente);
-      alert("✅ Paciente agregado en Firebase!");
-      setPaciente({ nombre: "", fechaNacimiento: "", edad: "", sintomas: "", urgencia: "" });
-    } catch (e) {
-      console.error("❌ Error:", e);
-      alert("Error: revisa la consola");
+// 3️⃣ Modificar agregarPaciente para verificar expediente único
+const agregarPaciente = async (e) => {
+  e.preventDefault();
+
+  if (!paciente.expediente) {
+    alert("❌ Debes ingresar un número de expediente.");
+    return;
+  }
+
+  try {
+    const docRef = doc(db, "pacientes", paciente.expediente);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      alert("❌ Este número de expediente ya existe. Ingresa uno diferente.");
+      return;
     }
-  };
+
+    // Guardar paciente
+    await setDoc(docRef, paciente);
+    alert("✅ Paciente agregado en Firebase!");
+
+    // Limpiar formulario
+    setPaciente({ expediente: "", nombre: "", fechaNacimiento: "", edad: "", sintomas: "", urgencia: "" });
+  } catch (e) {
+    console.error("❌ Error:", e);
+    alert("Error: revisa la consola");
+  }
+};
+
 
   // ---------------- FORM DOCTOR ----------------
   const [doctor, setDoctor] = useState({
@@ -152,6 +172,15 @@ function Home() {
           {activeTab === "pacientes" && (
             <form onSubmit={agregarPaciente} style={{ textAlign: "left", maxWidth: 400, margin: "0 auto" }}>
               <h2 className="text-center mb-3">Formulario de Pacientes</h2>
+              <input
+  type="text"
+  name="expediente"
+  placeholder="Número de Expediente"
+  className="form-control mb-2"
+  value={paciente.expediente}
+  onChange={handlePacienteChange}
+  required
+/>
               <input
                 type="text"
                 name="nombre"
