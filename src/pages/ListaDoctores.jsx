@@ -4,21 +4,18 @@ import { collection, getDocs } from "firebase/firestore";
 
 const USE_FIREBASE = true;
 
-// Glob ABSOLUTO (Vite): busca en /src/assets/doctores
 const images = import.meta.glob(
   "/src/assets/doctores/*.{png,PNG,jpg,JPG,jpeg,JPEG,webp,WEBP,svg,SVG}",
   { eager: true, as: "url" }
 );
 
-// Mapa "archivo.ext" -> url
 const imageMap = Object.fromEntries(
   Object.entries(images).map(([path, url]) => {
-    const file = path.split("/").pop(); // ej: "juan-perez.png"
+    const file = path.split("/").pop();
     return [file.toLowerCase(), url];
   })
 );
 
-// DEBUG: ver qué encontró el glob
 if (import.meta.env.DEV) {
   console.group("[ListaDoctores] Archivos detectados en /src/assets/doctores");
   Object.keys(imageMap).forEach((k) =>
@@ -27,7 +24,6 @@ if (import.meta.env.DEV) {
   console.groupEnd();
 }
 
-// SVG fallback
 const defaultAvatar =
   "data:image/svg+xml;utf8," +
   encodeURIComponent(`
@@ -52,7 +48,6 @@ const slugify = (str = "") =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 
-// Lista local de ejemplo
 const DOCTORES_PREDETERMINADOS = [
   {
     id: "dp-001",
@@ -81,22 +76,17 @@ const DOCTORES_PREDETERMINADOS = [
     consultorio: "A-310",
     foto: "default.png",
   },
-  // agrega más doctores...
 ];
 
-// Prioridad imagen
 function getImageForDoctor({ nombre, id, foto }) {
   if (foto) {
     const key = typeof foto === "string" ? foto.toLowerCase() : foto;
 
-    // a) ¿Existe en /src/assets/doctores/?
     const hitByFoto = imageMap[key];
     if (hitByFoto) return hitByFoto;
 
-    // b) URL absoluta
     if (typeof foto === "string" && /^https?:\/\//i.test(foto)) return foto;
 
-    // c) Carpeta public/assets/doctores/
     if (
       typeof foto === "string" &&
       (foto.startsWith("/assets/") || foto.startsWith("assets/"))
@@ -104,13 +94,11 @@ function getImageForDoctor({ nombre, id, foto }) {
       return foto.startsWith("/") ? foto : `/${foto}`;
     }
 
-    // d) Ruta directa en public
     if (typeof foto === "string" && !foto.includes("/")) {
       return `/assets/doctores/${foto}`;
     }
   }
 
-  // 2) Buscar por slug
   const base = slugify(nombre || "");
   const candidates = [
     `${base}.jpg`,
@@ -208,7 +196,7 @@ function ListaDoctores() {
             className="col-12 col-sm-6 col-md-4 col-lg-3 d-flex align-items-stretch"
           >
             <div className="card bg-dark text-light mb-4 shadow-sm w-100">
-              {/* Imagen con ratio 4:3 y object-fit contain */}
+              {}
               <div className="ratio ratio-4x3 bg-black">
                 <img
                   src={getImageForDoctor(d)}

@@ -9,7 +9,6 @@ import {
 } from "firebase/firestore";
 
 function PacienteForm() {
-  // Estado del formulario (sin 'expediente' editable)
   const [paciente, setPaciente] = useState({
     nombre: "",
     fechaNacimiento: "",
@@ -18,14 +17,10 @@ function PacienteForm() {
     urgencia: "",
   });
 
-  // Vista previa del siguiente expediente (solo informativo)
   const [nextPreview, setNextPreview] = useState("—");
   const [loading, setLoading] = useState(false);
-
-  // Utilidad para formatear el expediente con ceros a la izquierda
   const formatExp = (n, width = 6) => String(n).padStart(width, "0");
 
-  // Cargar la vista previa del próximo expediente al montar
   useEffect(() => {
     (async () => {
       try {
@@ -49,7 +44,7 @@ function PacienteForm() {
     setLoading(true);
 
     try {
-      // 1) Transacción para obtener un expediente único y aumentar el contador
+
       const expedienteNum = await runTransaction(db, async (tx) => {
         const counterRef = doc(db, "counters", "pacientes");
         const counterSnap = await tx.get(counterRef);
@@ -66,18 +61,15 @@ function PacienteForm() {
 
       const expediente = formatExp(expedienteNum);
 
-      // 2) Crear el documento del paciente con ID = expediente (único)
       const pacienteDocRef = doc(db, "pacientes", expediente);
       await setDoc(pacienteDocRef, {
-        expediente,               // p.ej. "000123"
-        expedienteNum,            // número para ordenar fácilmente
+        expediente,              
         ...paciente,
         createdAt: serverTimestamp(),
       });
 
       alert(`✅ Paciente agregado. Expediente: ${expediente}`);
 
-      // 3) Reset del formulario y refresco de la vista previa
       setPaciente({
         nombre: "",
         fechaNacimiento: "",
@@ -101,13 +93,13 @@ function PacienteForm() {
     >
       <h2 className="text-center mb-3">Formulario de Pacientes</h2>
 
-      {/* Mostrar el expediente que se asignará automáticamente */}
+      {}
       <div className="alert alert-info py-2">
         <strong>Siguiente expediente:</strong>{" "}
         <span className="badge bg-primary">{nextPreview}</span>
       </div>
 
-      {/* El expediente ya NO se edita manualmente */}
+      {}
 
       <input
         type="text"

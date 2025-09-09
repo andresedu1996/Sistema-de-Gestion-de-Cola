@@ -7,7 +7,6 @@ function ListaPacientes() {
   const [sortUrgencia, setSortUrgencia] = useState(false);
 
   useEffect(() => {
-    // Suscripción en tiempo real a todos los pacientes
     const colRef = collection(db, "pacientes");
     const unsub = onSnapshot(colRef, (snap) => {
       const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
@@ -16,13 +15,11 @@ function ListaPacientes() {
     return () => unsub();
   }, []);
 
-  // Oculta los atendidos (atendido === true)
   const visibles = useMemo(
     () => pacientes.filter((p) => !p.atendido),
     [pacientes]
   );
 
-  // Orden por urgencia (convierte a número por si viene como string)
   const pacientesOrdenados = useMemo(() => {
     if (!sortUrgencia) return visibles;
     return [...visibles].sort(
@@ -30,7 +27,6 @@ function ListaPacientes() {
     );
   }, [visibles, sortUrgencia]);
 
-  // Helper para mostrar texto de urgencia
   const urgenciaTexto = (u) => {
     const val = String(u ?? "");
     return val === "1" ? "Alta" : val === "2" ? "Media" : val === "3" ? "Baja" : "—";

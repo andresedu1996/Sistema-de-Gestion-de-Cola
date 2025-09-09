@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import ListaPacientes from "./ListaPacientes";
 import ListaDoctores from "./ListaDoctores";
 import PacienteForm from "./PacienteForm";
-import ModificarExpediente from "./ModificarExpediente"; // 👈 nuevo
+import ModificarExpediente from "./ModificarExpediente";
 
 function Home() {
   const [activeTab, setActiveTab] = useState("inicio");
@@ -20,7 +20,7 @@ function Home() {
         flexDirection: "column",
       }}
     >
-      {/* Imagen de fondo para todas las pantallas */}
+      {}
       <div
         aria-hidden
         style={{
@@ -91,7 +91,7 @@ function Home() {
                   onClick={() => setActiveTab("modificar")}
                   style={{ color: "#fff" }}
                 >
-                  Modificar Expediente {/* 👈 nueva opción */}
+                  Modificar Expediente {}
                 </button>
               </li>
 

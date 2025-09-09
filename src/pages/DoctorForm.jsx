@@ -22,7 +22,6 @@ function DoctorForm() {
   const agregarDoctor = async (e) => {
     e.preventDefault();
     try {
-      // Generamos un ID único automático con el nombre + timestamp
       const doctorId = `${form.nombre}-${Date.now()}`;
       await setDoc(doc(db, "doctores", doctorId), form);
 
