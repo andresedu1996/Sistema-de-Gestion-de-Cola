@@ -1,33 +1,49 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { db } from "../firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, onSnapshot } from "firebase/firestore";
 
 function ListaPacientes() {
   const [pacientes, setPacientes] = useState([]);
   const [sortUrgencia, setSortUrgencia] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      const querySnapshot = await getDocs(collection(db, "pacientes"));
-      const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const colRef = collection(db, "pacientes");
+    const unsub = onSnapshot(colRef, (snap) => {
+      const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       setPacientes(data);
-    };
-    fetchData();
+    });
+    return () => unsub();
   }, []);
 
-  const pacientesOrdenados = sortUrgencia
-    ? [...pacientes].sort((a, b) => a.urgencia - b.urgencia)
-    : pacientes;
+  const visibles = useMemo(
+    () => pacientes.filter((p) => !p.atendido),
+    [pacientes]
+  );
+
+  const pacientesOrdenados = useMemo(() => {
+    if (!sortUrgencia) return visibles;
+    return [...visibles].sort(
+      (a, b) => Number(a.urgencia ?? 99) - Number(b.urgencia ?? 99)
+    );
+  }, [visibles, sortUrgencia]);
+
+  const urgenciaTexto = (u) => {
+    const val = String(u ?? "");
+    return val === "1" ? "Alta" : val === "2" ? "Media" : val === "3" ? "Baja" : "—";
+  };
 
   return (
     <div>
       <h2 className="text-center mb-3">Lista de Espera</h2>
-      <button 
-        className="btn btn-primary mb-3"
-        onClick={() => setSortUrgencia(!sortUrgencia)}
-      >
-        {sortUrgencia ? "Quitar orden por urgencia" : "Ordenar por urgencia"}
-      </button>
+
+      <div className="text-center mb-3">
+        <button
+          className="btn btn-primary"
+          onClick={() => setSortUrgencia(!sortUrgencia)}
+        >
+          {sortUrgencia ? "Quitar orden por urgencia" : "Ordenar por urgencia"}
+        </button>
+      </div>
 
       <table className="table table-striped table-dark">
         <thead>
@@ -40,17 +56,23 @@ function ListaPacientes() {
           </tr>
         </thead>
         <tbody>
-          {pacientesOrdenados.map(p => (
-            <tr key={p.id}>
-              <td>{p.id}</td>
-              <td>{p.nombre}</td>
-              <td>{p.edad}</td>
-              <td>{p.sintomas}</td>
-              <td>
-                {p.urgencia === "1" ? "Alta" : p.urgencia === "2" ? "Media" : "Baja"}
+          {pacientesOrdenados.length === 0 ? (
+            <tr>
+              <td colSpan={5} className="text-center">
+                Sin pacientes en espera 🙌
               </td>
             </tr>
-          ))}
+          ) : (
+            pacientesOrdenados.map((p) => (
+              <tr key={p.id}>
+                <td>{p.id}</td>
+                <td>{p.nombre}</td>
+                <td>{p.edad}</td>
+                <td>{p.sintomas}</td>
+                <td>{urgenciaTexto(p.urgencia)}</td>
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
     </div>
