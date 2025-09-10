@@ -14,6 +14,15 @@ function ModificarExpediente() {
   const [edad, setEdad] = useState("");
   const [atendido, setAtendido] = useState(false);
 
+  const limpiarFormulario = () => {
+    setExpedienteInput("");
+    setPaciente(null);
+    setUrgencia("");
+    setSintomas("");
+    setEdad("");
+    setAtendido(false);
+  };
+
   const buscarPaciente = async (e) => {
     e.preventDefault();
     setError("");
@@ -34,11 +43,11 @@ function ModificarExpediente() {
         return;
       }
       const data = snap.data();
-      setPaciente({ id, ...data });
 
-      setUrgencia(String(data.urgencia ?? ""));
+      setPaciente({ id, ...data });
+      setUrgencia(data.urgencia === 0 || data.urgencia ? String(data.urgencia) : "");
       setSintomas(String(data.sintomas ?? ""));
-      setEdad(String(data.edad ?? ""));
+      setEdad(data.edad === 0 || data.edad ? String(data.edad) : "");
       setAtendido(Boolean(data.atendido ?? false));
     } catch (e) {
       console.error(e);
@@ -56,17 +65,29 @@ function ModificarExpediente() {
       setSaving(true);
       const ref = doc(db, "pacientes", paciente.id);
 
+      const urgenciaNumber = urgencia === "" ? null : Number(urgencia);
+      const edadNumber = edad === "" ? null : Number(edad);
+
       const updates = {
-        urgencia: urgencia || paciente.urgencia || "",
+        urgencia:
+          urgenciaNumber !== null
+            ? urgenciaNumber
+            : (typeof paciente.urgencia === "number" ? paciente.urgencia : null),
         sintomas,
-        edad,
+        edad: edadNumber,
         atendido,
+        ...(atendido ? { enEspera: false, atendidoAt: serverTimestamp() } : {}),
         updatedAt: serverTimestamp(),
       };
 
       await updateDoc(ref, updates);
+
       alert("✅ Expediente actualizado correctamente.");
       setPaciente((prev) => (prev ? { ...prev, ...updates } : prev));
+
+      if (atendido) {
+        limpiarFormulario();
+      }
     } catch (e) {
       console.error(e);
       alert("❌ No se pudieron guardar los cambios. Revisa la consola.");
@@ -98,15 +119,9 @@ function ModificarExpediente() {
 
       {paciente && (
         <form onSubmit={guardarCambios} className="bg-dark bg-opacity-50 p-3 rounded">
-          <div className="mb-2">
-            <strong>Expediente:</strong> {paciente.id}
-          </div>
-          <div className="mb-2">
-            <strong>Nombre:</strong> {paciente.nombre || "—"}
-          </div>
-          <div className="mb-2">
-            <strong>Fecha Nac.:</strong> {paciente.fechaNacimiento || "—"}
-          </div>
+          <div className="mb-2"><strong>Expediente:</strong> {paciente.id}</div>
+          <div className="mb-2"><strong>Nombre:</strong> {paciente.nombre || "—"}</div>
+          <div className="mb-2"><strong>Fecha Nac.:</strong> {paciente.fechaNacimiento || "—"}</div>
 
           <div className="row">
             <div className="col-md-4 mb-3">
@@ -115,6 +130,7 @@ function ModificarExpediente() {
                 className="form-select"
                 value={urgencia}
                 onChange={(e) => setUrgencia(e.target.value)}
+                disabled={saving}
               >
                 <option value="">—</option>
                 <option value="1">Alta</option>
@@ -131,6 +147,7 @@ function ModificarExpediente() {
                 value={edad}
                 onChange={(e) => setEdad(e.target.value)}
                 min="0"
+                disabled={saving}
               />
             </div>
 
@@ -142,6 +159,7 @@ function ModificarExpediente() {
                   type="checkbox"
                   checked={atendido}
                   onChange={(e) => setAtendido(e.target.checked)}
+                  disabled={saving}
                 />
                 <label htmlFor="chkAtendido" className="form-check-label">
                   Marcar como atendido
@@ -156,12 +174,23 @@ function ModificarExpediente() {
               className="form-control"
               value={sintomas}
               onChange={(e) => setSintomas(e.target.value)}
+              disabled={saving}
             />
           </div>
 
-          <button type="submit" className="btn btn-success" disabled={saving}>
-            {saving ? "Guardando..." : "Guardar Cambios"}
-          </button>
+          <div className="d-flex gap-2">
+            <button type="submit" className="btn btn-success" disabled={saving}>
+              {saving ? "Guardando..." : "Guardar Cambios"}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={limpiarFormulario}
+              disabled={saving}
+            >
+              Limpiar
+            </button>
+          </div>
         </form>
       )}
     </div>
