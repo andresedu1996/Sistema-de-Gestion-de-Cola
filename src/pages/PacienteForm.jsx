@@ -13,8 +13,8 @@ function PacienteForm() {
     nombre: "",
     fechaNacimiento: "",
     edad: "",
-    sintomas: "",
-    urgencia: "",
+    ciudad: "",
+    direccion: "",
   });
 
   const [nextPreview, setNextPreview] = useState("—");
@@ -44,7 +44,7 @@ function PacienteForm() {
     setLoading(true);
 
     try {
-
+      // Genera expediente unico
       const expedienteNum = await runTransaction(db, async (tx) => {
         const counterRef = doc(db, "counters", "pacientes");
         const counterSnap = await tx.get(counterRef);
@@ -61,21 +61,23 @@ function PacienteForm() {
 
       const expediente = formatExp(expedienteNum);
 
+      // --- Guardar SOLO en "pacientes" (no lista de espera) ---
       const pacienteDocRef = doc(db, "pacientes", expediente);
       await setDoc(pacienteDocRef, {
-        expediente,              
+        expediente,
         ...paciente,
         createdAt: serverTimestamp(),
       });
 
       alert(`✅ Paciente agregado. Expediente: ${expediente}`);
 
+      // Reset del formulario
       setPaciente({
         nombre: "",
         fechaNacimiento: "",
         edad: "",
-        sintomas: "",
-        urgencia: "",
+        ciudad: "",
+        direccion: "",
       });
       setNextPreview(formatExp(expedienteNum + 1));
     } catch (e) {
@@ -93,13 +95,10 @@ function PacienteForm() {
     >
       <h2 className="text-center mb-3">Formulario de Pacientes</h2>
 
-      {}
       <div className="alert alert-info py-2">
         <strong>Siguiente expediente:</strong>{" "}
         <span className="badge bg-primary">{nextPreview}</span>
       </div>
-
-      {}
 
       <input
         type="text"
@@ -128,30 +127,28 @@ function PacienteForm() {
         value={paciente.edad}
         onChange={handleChange}
         required
+        min="0"
       />
 
       <input
         type="text"
-        name="sintomas"
-        placeholder="Síntomas"
+        name="ciudad"
+        placeholder="Ciudad"
         className="form-control mb-2"
-        value={paciente.sintomas}
+        value={paciente.ciudad}
         onChange={handleChange}
         required
       />
 
-      <select
-        name="urgencia"
+      <textarea
+        name="direccion"
+        placeholder="Dirección exacta"
         className="form-control mb-3"
-        value={paciente.urgencia}
+        rows={3}
+        value={paciente.direccion}
         onChange={handleChange}
         required
-      >
-        <option value="">Nivel de urgencia</option>
-        <option value="1">Alta</option>
-        <option value="2">Media</option>
-        <option value="3">Baja</option>
-      </select>
+      />
 
       <button type="submit" className="btn btn-primary w-100" disabled={loading}>
         {loading ? "Guardando..." : "Guardar Paciente"}

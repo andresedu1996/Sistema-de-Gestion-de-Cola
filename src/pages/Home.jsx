@@ -1,9 +1,18 @@
 import React, { useState } from "react";
-import { FaUserPlus, FaEdit, FaListUl, FaUserMd, FaArrowLeft } from "react-icons/fa"; 
-import ListaPacientes from "./ListaPacientes";
-import ListaDoctores from "./ListaDoctores";
-import PacienteForm from "./PacienteForm";
-import ModificarExpediente from "./ModificarExpediente";
+import {
+  FaUserPlus,
+  FaEdit,
+  FaListUl,
+  FaUserMd,
+  FaArrowLeft,
+  FaCalendarAlt,
+} from "react-icons/fa"; 
+
+import ListaPacientes from "./ListaPacientes.jsx";
+import ListaDoctores from "./ListaDoctores.jsx";
+import PacienteForm from "./PacienteForm.jsx";
+import ModificarExpediente from "./ModificarExpediente.jsx";
+import AgendarCitaForm from "./AgendarCitaForm.jsx"; // 👈 CORREGIDO
 
 function Home() {
   const [activeTab, setActiveTab] = useState("inicio");
@@ -51,6 +60,7 @@ function Home() {
             <h1 className="mb-4">🏥 Bienvenido a Hospital Vida</h1>
             <div className="container">
               <div className="row justify-content-center g-4">
+
                 {/* Card Crear Expediente */}
                 <div className="col-md-3">
                   <div
@@ -74,7 +84,7 @@ function Home() {
                   >
                     <div className="card-body">
                       <FaEdit size={40} className="mb-3 text-warning" />
-                      <h5 className="card-title">Modificar Expediente</h5>
+                      <h5 className="card-title">Editar Citas</h5>
                     </div>
                   </div>
                 </div>
@@ -106,12 +116,26 @@ function Home() {
                     </div>
                   </div>
                 </div>
+
+                {/* Card Agendar Cita */}
+                <div className="col-md-3">
+                  <div
+                    className="card text-center h-100 shadow"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => setActiveTab("agendar")}
+                  >
+                    <div className="card-body">
+                      <FaCalendarAlt size={40} className="mb-3 text-success" />
+                      <h5 className="card-title">Agendar Cita</h5>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Otras pantallas con botón de regreso */}
+        {/* Regresar al menu principal */}
         {activeTab !== "inicio" && (
           <div style={{ width: "100%" }}>
             <button
@@ -126,6 +150,7 @@ function Home() {
             {activeTab === "modificar" && <ModificarExpediente />}
             {activeTab === "listaPacientes" && <ListaPacientes />}
             {activeTab === "listaDoctores" && <ListaDoctores />}
+            {activeTab === "agendar" && <AgendarCitaForm />}
           </div>
         )}
       </main>

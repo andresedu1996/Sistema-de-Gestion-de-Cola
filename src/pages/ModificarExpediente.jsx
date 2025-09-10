@@ -1,170 +1,250 @@
-import React, { useState } from "react";
+// src/pages/ModificarExpediente.jsx
+import React, { useState, useEffect } from "react";
 import { db } from "../firebase";
-import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDocs,
+  query,
+  where,
+  updateDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 
 function ModificarExpediente() {
-  const [expedienteInput, setExpedienteInput] = useState("");
+  const [busqueda, setBusqueda] = useState("");
   const [paciente, setPaciente] = useState(null);
+  const [citas, setCitas] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const [urgencia, setUrgencia] = useState("");
-  const [sintomas, setSintomas] = useState("");
-  const [edad, setEdad] = useState("");
-  const [atendido, setAtendido] = useState(false);
-
-  const buscarPaciente = async (e) => {
-    e.preventDefault();
-    setError("");
+  const limpiarBusqueda = () => {
+    setBusqueda("");
     setPaciente(null);
+    setCitas([]);
+    setError("");
+  };
 
-    const id = (expedienteInput || "").trim();
-    if (!id) {
-      setError("Ingresa un número de expediente.");
+  const buscarPaciente = async () => {
+    setLoading(true);
+    setPaciente(null);
+    setCitas([]);
+    setError("");
+
+    if (!busqueda.trim()) {
+      setError("Ingresa un expediente o nombre");
+      setLoading(false);
       return;
     }
 
     try {
-      setLoading(true);
-      const ref = doc(db, "pacientes", id);
-      const snap = await getDoc(ref);
-      if (!snap.exists()) {
-        setError(`No se encontró el expediente ${id}.`);
+      let qPacientes;
+      if (/^\d+$/.test(busqueda.trim())) {
+        // buscar por expediente
+        qPacientes = query(
+          collection(db, "pacientes"),
+          where("expediente", "==", busqueda.trim())
+        );
+      } else {
+        // buscar por nombre exacto
+        qPacientes = query(
+          collection(db, "pacientes"),
+          where("nombre", "==", busqueda.trim())
+        );
+      }
+
+      const snap = await getDocs(qPacientes);
+      if (snap.empty) {
+        setError("Paciente no encontrado");
+        setLoading(false);
         return;
       }
-      const data = snap.data();
-      setPaciente({ id, ...data });
 
-      setUrgencia(String(data.urgencia ?? ""));
-      setSintomas(String(data.sintomas ?? ""));
-      setEdad(String(data.edad ?? ""));
-      setAtendido(Boolean(data.atendido ?? false));
-    } catch (e) {
-      console.error(e);
-      setError("Error al buscar el expediente. Revisa la consola.");
+      const pacData = snap.docs[0];
+      setPaciente({ id: pacData.id, ...pacData.data() });
+
+      // Cargar citas en_espera de este paciente
+      const qCitas = query(
+        collection(db, "citas"),
+        where("estado", "==", "en_espera"),
+        where("pacienteId", "==", pacData.id)
+      );
+      const snapCitas = await getDocs(qCitas);
+      const citasData = snapCitas.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setCitas(citasData);
+    } catch (err) {
+      console.error(err);
+      setError("Error buscando paciente. Revisa la consola.");
     } finally {
       setLoading(false);
     }
   };
 
-  const guardarCambios = async (e) => {
-    e.preventDefault();
-    if (!paciente) return;
-
+  const guardarCambiosCita = async (citaId, cambios) => {
     try {
-      setSaving(true);
-      const ref = doc(db, "pacientes", paciente.id);
-
+      const citaRef = doc(db, "citas", citaId);
       const updates = {
-        urgencia: urgencia || paciente.urgencia || "",
-        sintomas,
-        edad,
-        atendido,
+        ...cambios,
         updatedAt: serverTimestamp(),
       };
+      if (cambios.atendido) {
+        updates.estado = "atendida";
+        updates.atendidoAt = serverTimestamp();
+      }
+      await updateDoc(citaRef, updates);
 
-      await updateDoc(ref, updates);
-      alert("✅ Expediente actualizado correctamente.");
-      setPaciente((prev) => (prev ? { ...prev, ...updates } : prev));
-    } catch (e) {
-      console.error(e);
-      alert("❌ No se pudieron guardar los cambios. Revisa la consola.");
-    } finally {
-      setSaving(false);
+      // Actualizar estado en el frontend
+      setCitas((prev) =>
+        prev.map((c) => (c.id === citaId ? { ...c, ...updates } : c))
+      );
+
+      alert("✅ Cita actualizada correctamente");
+    } catch (err) {
+      console.error(err);
+      alert("❌ Error al actualizar cita. Revisa la consola");
     }
   };
 
   return (
-    <div style={{ textAlign: "left", maxWidth: 640, margin: "0 auto" }}>
-      <h2 className="text-center mb-3">Modificar Expediente</h2>
+    <div style={{ maxWidth: 700, margin: "0 auto" }}>
+      <h2 className="text-center mb-3">Modificar Citas</h2>
 
-      <form onSubmit={buscarPaciente} className="mb-3">
-        <label className="form-label">Número de Expediente</label>
-        <div className="input-group">
-          <input
-            className="form-control"
-            placeholder="Ej: 000123"
-            value={expedienteInput}
-            onChange={(e) => setExpedienteInput(e.target.value)}
-          />
-          <button className="btn btn-info" type="submit" disabled={loading}>
-            {loading ? "Buscando..." : "Buscar"}
-          </button>
-        </div>
-      </form>
+      {/* Búsqueda */}
+      <div className="input-group mb-3">
+        <input
+          type="text"
+          className="form-control"
+          placeholder="Expediente o nombre"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+        />
+        <button
+          className="btn btn-secondary"
+          onClick={buscarPaciente}
+          disabled={loading}
+        >
+          {loading ? "Buscando…" : "Buscar"}
+        </button>
+        <button className="btn btn-outline-secondary" onClick={limpiarBusqueda}>
+          Limpiar
+        </button>
+      </div>
 
       {error && <div className="alert alert-danger">{error}</div>}
 
+      {/* Info paciente */}
       {paciente && (
-        <form onSubmit={guardarCambios} className="bg-dark bg-opacity-50 p-3 rounded">
-          <div className="mb-2">
-            <strong>Expediente:</strong> {paciente.id}
+        <div className="card mb-3">
+          <div className="card-body">
+            <p>
+              <strong>Expediente:</strong> {paciente.expediente}
+            </p>
+            <p>
+              <strong>Nombre:</strong> {paciente.nombre}
+            </p>
+            {paciente.fechaNacimiento && (
+              <p>
+                <strong>Fecha Nac.:</strong> {paciente.fechaNacimiento}
+              </p>
+            )}
           </div>
-          <div className="mb-2">
-            <strong>Nombre:</strong> {paciente.nombre || "—"}
-          </div>
-          <div className="mb-2">
-            <strong>Fecha Nac.:</strong> {paciente.fechaNacimiento || "—"}
-          </div>
-
-          <div className="row">
-            <div className="col-md-4 mb-3">
-              <label className="form-label">Urgencia</label>
-              <select
-                className="form-select"
-                value={urgencia}
-                onChange={(e) => setUrgencia(e.target.value)}
-              >
-                <option value="">—</option>
-                <option value="1">Alta</option>
-                <option value="2">Media</option>
-                <option value="3">Baja</option>
-              </select>
-            </div>
-
-            <div className="col-md-4 mb-3">
-              <label className="form-label">Edad</label>
-              <input
-                type="number"
-                className="form-control"
-                value={edad}
-                onChange={(e) => setEdad(e.target.value)}
-                min="0"
-              />
-            </div>
-
-            <div className="col-md-4 mb-3 d-flex align-items-end">
-              <div className="form-check">
-                <input
-                  id="chkAtendido"
-                  className="form-check-input"
-                  type="checkbox"
-                  checked={atendido}
-                  onChange={(e) => setAtendido(e.target.checked)}
-                />
-                <label htmlFor="chkAtendido" className="form-check-label">
-                  Marcar como atendido
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <div className="mb-3">
-            <label className="form-label">Síntomas</label>
-            <input
-              className="form-control"
-              value={sintomas}
-              onChange={(e) => setSintomas(e.target.value)}
-            />
-          </div>
-
-          <button type="submit" className="btn btn-success" disabled={saving}>
-            {saving ? "Guardando..." : "Guardar Cambios"}
-          </button>
-        </form>
+        </div>
       )}
+
+      {/* Lista de citas */}
+      {citas.length > 0 ? (
+        citas.map((cita) => <CitaForm key={cita.id} cita={cita} onGuardar={guardarCambiosCita} />)
+      ) : paciente ? (
+        <div className="alert alert-info">No hay citas en espera para este paciente</div>
+      ) : null}
     </div>
+  );
+}
+
+function CitaForm({ cita, onGuardar }) {
+  const [sintomas, setSintomas] = useState(cita.sintomas || "");
+  const [motivo, setMotivo] = useState(cita.motivo || "");
+  const [prioridad, setPrioridad] = useState(cita.prioridad || "media");
+  const [atendido, setAtendido] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const handleGuardar = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    await onGuardar(cita.id, { sintomas, motivo, prioridad, atendido });
+    setSaving(false);
+  };
+
+  return (
+    <form
+      onSubmit={handleGuardar}
+      className="border rounded p-3 mb-3 bg-dark bg-opacity-50"
+    >
+      <div className="mb-2">
+        <strong>Doctor:</strong> {cita.doctorNombre}
+      </div>
+      <div className="mb-2">
+        <strong>Área:</strong> {cita.area}
+      </div>
+      <div className="mb-2">
+        <strong>Fecha:</strong> {cita.fecha}
+      </div>
+      <div className="mb-2">
+        <strong>Horario:</strong> {cita.horario}
+      </div>
+
+      <div className="mb-2">
+        <label className="form-label">Síntomas</label>
+        <input
+          className="form-control"
+          value={sintomas}
+          onChange={(e) => setSintomas(e.target.value)}
+          disabled={saving}
+        />
+      </div>
+
+      <div className="mb-2">
+        <label className="form-label">Motivo</label>
+        <input
+          className="form-control"
+          value={motivo}
+          onChange={(e) => setMotivo(e.target.value)}
+          disabled={saving}
+        />
+      </div>
+
+      <div className="mb-2">
+        <label className="form-label">Prioridad</label>
+        <select
+          className="form-select"
+          value={prioridad}
+          onChange={(e) => setPrioridad(e.target.value)}
+          disabled={saving}
+        >
+          <option value="alta">Alta</option>
+          <option value="media">Media</option>
+          <option value="baja">Baja</option>
+        </select>
+      </div>
+
+      <div className="form-check mb-2">
+        <input
+          type="checkbox"
+          className="form-check-input"
+          id={`atendido-${cita.id}`}
+          checked={atendido}
+          onChange={(e) => setAtendido(e.target.checked)}
+          disabled={saving}
+        />
+        <label className="form-check-label" htmlFor={`atendido-${cita.id}`}>
+          Marcar como atendido
+        </label>
+      </div>
+
+      <button className="btn btn-success w-100" type="submit" disabled={saving}>
+        {saving ? "Guardando…" : "Guardar Cambios"}
+      </button>
+    </form>
   );
 }
 

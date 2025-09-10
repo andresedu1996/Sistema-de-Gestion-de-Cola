@@ -1,49 +1,89 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { db } from "../firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, query, where, getDoc, doc } from "firebase/firestore";
 
 function ListaPacientes() {
-  const [pacientes, setPacientes] = useState([]);
-  const [sortUrgencia, setSortUrgencia] = useState(false);
+  const [citas, setCitas] = useState([]); // todas las citas en_espera
+  const [pacientesMap, setPacientesMap] = useState(new Map()); // para almacenar datos de los pacientes
 
   useEffect(() => {
-    const colRef = collection(db, "pacientes");
-    const unsub = onSnapshot(colRef, (snap) => {
-      const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setPacientes(data);
+    // Escucha de citas
+    const qCitas = query(collection(db, "citas"), where("estado", "==", "en_espera"));
+    const unsubCitas = onSnapshot(qCitas, async (snap) => {
+      const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setCitas(rows);
+
+      // Cargar datos de pacientes asociados
+      const pacientesSet = new Set(rows.map(c => c.pacienteId || c.pacienteExpediente));
+      const map = new Map(pacientesMap); // copiar estado actual
+      for (const id of pacientesSet) {
+        if (!map.has(id)) {
+          try {
+            const ref = doc(db, "pacientes", id);
+            const snapPac = await getDoc(ref);
+            if (snapPac.exists()) {
+              map.set(id, snapPac.data());
+            }
+          } catch (err) {
+            console.error("Error cargando paciente", id, err);
+          }
+        }
+      }
+      setPacientesMap(map);
     });
-    return () => unsub();
+
+    return () => unsubCitas();
   }, []);
 
-  const visibles = useMemo(
-    () => pacientes.filter((p) => !p.atendido),
-    [pacientes]
-  );
+  const prioridadPeso = { alta: 0, media: 1, baja: 2 };
 
-  const pacientesOrdenados = useMemo(() => {
-    if (!sortUrgencia) return visibles;
-    return [...visibles].sort(
-      (a, b) => Number(a.urgencia ?? 99) - Number(b.urgencia ?? 99)
-    );
-  }, [visibles, sortUrgencia]);
+  const listaOrdenada = useMemo(() => {
+    const fusion = citas.map((cita) => {
+      let fecha = "—";
+      let hora = "";
 
-  const urgenciaTexto = (u) => {
-    const val = String(u ?? "");
-    return val === "1" ? "Alta" : val === "2" ? "Media" : val === "3" ? "Baja" : "—";
-  };
+      if (cita.fecha && cita.horario) {
+        const fechaObj = new Date(cita.fecha);
+        fecha = fechaObj.toLocaleDateString();
+        hora = cita.horario;
+      } else if (cita.fechaHora) {
+        const fechaObj = new Date(cita.fechaHora);
+        fecha = fechaObj.toLocaleDateString();
+        hora = fechaObj.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      }
+
+      const pacienteData = pacientesMap.get(cita.pacienteId || cita.pacienteExpediente) || {};
+
+      return {
+        id: cita.id,
+        expediente: cita.pacienteExpediente || cita.pacienteId,
+        nombre: cita.pacienteNombre || pacienteData.nombre || "—",
+        edad: pacienteData.edad ?? "—",
+        prioridad: (cita.prioridad || "media").toLowerCase(),
+        fecha,
+        hora,
+        doctor: cita.doctorNombre || "—",
+      };
+    });
+
+    fusion.sort((a, b) => {
+      const pa = prioridadPeso[a.prioridad] ?? 1;
+      const pb = prioridadPeso[b.prioridad] ?? 1;
+      if (pa !== pb) return pa - pb;
+
+      const ta = a.fecha ? Date.parse(a.fecha) : Infinity;
+      const tb = b.fecha ? Date.parse(b.fecha) : Infinity;
+      if (ta !== tb) return ta - tb;
+
+      return String(a.expediente).localeCompare(String(b.expediente));
+    });
+
+    return fusion;
+  }, [citas, pacientesMap]);
 
   return (
     <div>
       <h2 className="text-center mb-3">Lista de Espera</h2>
-
-      <div className="text-center mb-3">
-        <button
-          className="btn btn-primary"
-          onClick={() => setSortUrgencia(!sortUrgencia)}
-        >
-          {sortUrgencia ? "Quitar orden por urgencia" : "Ordenar por urgencia"}
-        </button>
-      </div>
 
       <table className="table table-striped table-dark">
         <thead>
@@ -51,25 +91,29 @@ function ListaPacientes() {
             <th>Expediente</th>
             <th>Nombre</th>
             <th>Edad</th>
-            <th>Síntomas</th>
-            <th>Urgencia</th>
+            <th>Prioridad</th>
+            <th>Fecha</th>
+            <th>Hora</th>
+            <th>Doctor</th>
           </tr>
         </thead>
         <tbody>
-          {pacientesOrdenados.length === 0 ? (
+          {listaOrdenada.length === 0 ? (
             <tr>
-              <td colSpan={5} className="text-center">
-                Sin pacientes en espera 🙌
+              <td colSpan={7} className="text-center">
+                Sin citas en espera 🙌
               </td>
             </tr>
           ) : (
-            pacientesOrdenados.map((p) => (
-              <tr key={p.id}>
-                <td>{p.id}</td>
-                <td>{p.nombre}</td>
-                <td>{p.edad}</td>
-                <td>{p.sintomas}</td>
-                <td>{urgenciaTexto(p.urgencia)}</td>
+            listaOrdenada.map((cita) => (
+              <tr key={cita.id}>
+                <td>{cita.expediente}</td>
+                <td>{cita.nombre}</td>
+                <td>{cita.edad}</td>
+                <td style={{ textTransform: "capitalize" }}>{cita.prioridad}</td>
+                <td>{cita.fecha}</td>
+                <td>{cita.hora}</td>
+                <td>{cita.doctor}</td>
               </tr>
             ))
           )}
