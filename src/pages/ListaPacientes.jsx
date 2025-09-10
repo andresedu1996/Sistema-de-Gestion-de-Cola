@@ -1,74 +1,68 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { db } from "../firebase";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collection, onSnapshot, query, where, getDoc, doc } from "firebase/firestore";
 
 function ListaPacientes() {
-  const [pacientes, setPacientes] = useState([]); // pacientes enEspera
-  const [citas, setCitas] = useState([]);         // citas en_espera
+  const [citas, setCitas] = useState([]); // todas las citas en_espera
+  const [pacientesMap, setPacientesMap] = useState(new Map()); // para almacenar datos de los pacientes
 
   useEffect(() => {
-    const qPac = query(collection(db, "pacientes"), where("enEspera", "==", true));
-    const unsubPac = onSnapshot(qPac, (snap) => {
-      const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setPacientes(rows);
-    });
-
+    // Escucha de citas
     const qCitas = query(collection(db, "citas"), where("estado", "==", "en_espera"));
-    const unsubCitas = onSnapshot(qCitas, (snap) => {
+    const unsubCitas = onSnapshot(qCitas, async (snap) => {
       const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setCitas(rows);
+
+      // Cargar datos de pacientes asociados
+      const pacientesSet = new Set(rows.map(c => c.pacienteId || c.pacienteExpediente));
+      const map = new Map(pacientesMap); // copiar estado actual
+      for (const id of pacientesSet) {
+        if (!map.has(id)) {
+          try {
+            const ref = doc(db, "pacientes", id);
+            const snapPac = await getDoc(ref);
+            if (snapPac.exists()) {
+              map.set(id, snapPac.data());
+            }
+          } catch (err) {
+            console.error("Error cargando paciente", id, err);
+          }
+        }
+      }
+      setPacientesMap(map);
     });
 
-    return () => {
-      unsubPac();
-      unsubCitas();
-    };
+    return () => unsubCitas();
   }, []);
 
   const prioridadPeso = { alta: 0, media: 1, baja: 2 };
 
-  const lista = useMemo(() => {
-    const porExp = new Map();
-    const porId = new Map();
-    for (const c of citas) {
-      if (c.pacienteExpediente) porExp.set(c.pacienteExpediente, c);
-      porId.set(c.id, c);
-    }
-
-    const fusion = pacientes.map((p) => {
-      const cita =
-        (p.ultimaCitaId && porId.get(p.ultimaCitaId)) ||
-        porExp.get(p.id) ||
-        null;
-
-      const prioridad = (cita?.prioridad || "media").toLowerCase();
-
-      // Separar fecha y hora
+  const listaOrdenada = useMemo(() => {
+    const fusion = citas.map((cita) => {
       let fecha = "—";
       let hora = "";
-      if (cita) {
-        if (cita.fecha && cita.horario) {
-          const fechaObj = new Date(cita.fecha);
-          fecha = fechaObj.toLocaleDateString();
-          hora = cita.horario;
-        } else if (cita.fechaHora) {
-          const fechaObj = new Date(cita.fechaHora);
-          fecha = fechaObj.toLocaleDateString();
-          hora = fechaObj.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        }
-      } else if (p.ultimaCitaFecha) {
-        const fechaObj = new Date(p.ultimaCitaFecha);
+
+      if (cita.fecha && cita.horario) {
+        const fechaObj = new Date(cita.fecha);
+        fecha = fechaObj.toLocaleDateString();
+        hora = cita.horario;
+      } else if (cita.fechaHora) {
+        const fechaObj = new Date(cita.fechaHora);
         fecha = fechaObj.toLocaleDateString();
         hora = fechaObj.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
       }
 
+      const pacienteData = pacientesMap.get(cita.pacienteId || cita.pacienteExpediente) || {};
+
       return {
-        expediente: p.id,
-        nombre: p.nombre || "—",
-        edad: p.edad ?? "—",
-        prioridad,
+        id: cita.id,
+        expediente: cita.pacienteExpediente || cita.pacienteId,
+        nombre: cita.pacienteNombre || pacienteData.nombre || "—",
+        edad: pacienteData.edad ?? "—",
+        prioridad: (cita.prioridad || "media").toLowerCase(),
         fecha,
         hora,
+        doctor: cita.doctorNombre || "—",
       };
     });
 
@@ -85,7 +79,7 @@ function ListaPacientes() {
     });
 
     return fusion;
-  }, [pacientes, citas]);
+  }, [citas, pacientesMap]);
 
   return (
     <div>
@@ -100,24 +94,26 @@ function ListaPacientes() {
             <th>Prioridad</th>
             <th>Fecha</th>
             <th>Hora</th>
+            <th>Doctor</th>
           </tr>
         </thead>
         <tbody>
-          {lista.length === 0 ? (
+          {listaOrdenada.length === 0 ? (
             <tr>
-              <td colSpan={6} className="text-center">
-                Sin pacientes en espera 🙌
+              <td colSpan={7} className="text-center">
+                Sin citas en espera 🙌
               </td>
             </tr>
           ) : (
-            lista.map((p) => (
-              <tr key={p.expediente}>
-                <td>{p.expediente}</td>
-                <td>{p.nombre}</td>
-                <td>{p.edad}</td>
-                <td style={{ textTransform: "capitalize" }}>{p.prioridad}</td>
-                <td>{p.fecha}</td>
-                <td>{p.hora}</td>
+            listaOrdenada.map((cita) => (
+              <tr key={cita.id}>
+                <td>{cita.expediente}</td>
+                <td>{cita.nombre}</td>
+                <td>{cita.edad}</td>
+                <td style={{ textTransform: "capitalize" }}>{cita.prioridad}</td>
+                <td>{cita.fecha}</td>
+                <td>{cita.hora}</td>
+                <td>{cita.doctor}</td>
               </tr>
             ))
           )}
