@@ -12,7 +12,7 @@ import ListaPacientes from "./ListaPacientes.jsx";
 import ListaDoctores from "./ListaDoctores.jsx";
 import PacienteForm from "./PacienteForm.jsx";
 import ModificarExpediente from "./ModificarExpediente.jsx";
-import AgendarCitaForm from "./AgendarCitaForm.jsx"; 
+import AgendarCitaForm from "./AgendarCitaForm.jsx"; // 👈 CORREGIDO
 
 function Home() {
   const [activeTab, setActiveTab] = useState("inicio");
