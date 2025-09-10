@@ -84,7 +84,7 @@ function Home() {
                   >
                     <div className="card-body">
                       <FaEdit size={40} className="mb-3 text-warning" />
-                      <h5 className="card-title">Modificar Expediente</h5>
+                      <h5 className="card-title">Editar Citas</h5>
                     </div>
                   </div>
                 </div>
