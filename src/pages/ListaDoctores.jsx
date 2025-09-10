@@ -210,15 +210,24 @@ function ListaDoctores() {
                 />
               </div>
 
-              <div className="card-body d-flex flex-column">
-                <h5 className="card-title mb-2">{d.nombre}</h5>
-                <p className="card-text mb-2 flex-grow-1">
-                  <strong>Área:</strong> {d.area || "—"} <br />
-                  <strong>Teléfono:</strong> {d.telefono || "—"} <br />
-                  <strong>Edificio:</strong> {d.edificio || "—"} <br />
-                  <strong>Consultorio:</strong> {d.consultorio || "—"}
-                </p>
-              </div>
+         <div className="card-body d-flex flex-column">
+  <h5 className="card-title mb-2">{d.nombre}</h5>
+  <p className="card-text mb-2 flex-grow-1">
+    <strong>Área:</strong> {d.area || "—"} <br />
+    <strong>Teléfono:</strong> {d.telefono || "—"} <br />
+    <strong>Edificio:</strong> {d.edificio || "—"} <br />
+    <strong>Consultorio:</strong> {d.consultorio || "—"}
+  </p>
+
+{d.horarios && d.horarios.length > 0 && (
+  <div className="mt-2">
+    <strong>Horario:</strong>
+    <p className="ms-2">
+      🕒 {d.horarios[0].split(" - ")[0]} - {d.horarios[d.horarios.length - 1].split(" - ")[1]}
+    </p>
+  </div>
+)}
+</div>
             </div>
           </div>
         ))}
