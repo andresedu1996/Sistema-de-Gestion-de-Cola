@@ -107,7 +107,7 @@ function ModificarExpediente() {
 
   return (
     <div style={{ maxWidth: 700, margin: "0 auto" }}>
-      <h2 className="text-center mb-3">Modificar Expediente / Citas</h2>
+      <h2 className="text-center mb-3">Modificar Citas</h2>
 
       {/* Búsqueda */}
       <div className="input-group mb-3">
