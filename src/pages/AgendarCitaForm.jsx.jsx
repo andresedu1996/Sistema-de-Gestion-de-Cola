@@ -4,7 +4,6 @@ import { db } from "../firebase";
 import {
   collection,
   doc,
-  getDoc,
   getDocs,
   query,
   setDoc,
@@ -21,7 +20,6 @@ function AgendarCitaForm() {
   const [noEncontrado, setNoEncontrado] = useState(false);
 
   const [doctores, setDoctores] = useState([]);
-  const [cargandoDoctores, setCargandoDoctores] = useState(true);
 
   const [form, setForm] = useState({
     area: "",
@@ -34,8 +32,6 @@ function AgendarCitaForm() {
   });
 
   const [agendando, setAgendando] = useState(false);
-
-  // 🔹 Cargar todos los doctores al inicio
   useEffect(() => {
     const cargarDoctores = async () => {
       try {
@@ -53,31 +49,28 @@ function AgendarCitaForm() {
         console.error(err);
         alert("No se pudieron cargar los doctores.");
       } finally {
-        setCargandoDoctores(false);
+        // setCargandoDoctores(false);
       }
     };
     cargarDoctores();
   }, []);
 
-  // 🔹 Áreas únicas
   const areas = useMemo(() => {
     const s = new Set(doctores.map(d => (d.area || "").trim()).filter(Boolean));
     return Array.from(s).sort((a, b) => a.localeCompare(b));
   }, [doctores]);
 
-  // 🔹 Doctores filtrados por área seleccionada
   const doctoresFiltrados = useMemo(() => {
     if (!form.area) return [];
     return doctores.filter(d => (d.area || "").trim() === form.area);
   }, [doctores, form.area]);
 
-  // 🔹 Bloques disponibles según doctor y fecha
   const horariosDisponiblesDelDoctor = useMemo(() => {
     if (!form.doctorId || !form.fecha) return [];
     const selDoctor = doctores.find(d => d.id === form.doctorId);
     if (!selDoctor) return [];
 
-    const fechaSeleccionada = form.fecha; // formato yyyy-mm-dd
+    const fechaSeleccionada = form.fecha;
 
     return (selDoctor.horarios || []).filter(h => {
       return !(selDoctor.horariosOcupados || []).some(
@@ -86,7 +79,6 @@ function AgendarCitaForm() {
     });
   }, [form.doctorId, form.fecha, doctores]);
 
-  // 🔹 Manejo de cambios en el formulario
   const handleChange = e => {
     const { name, value } = e.target;
     if (name === "area") {
@@ -100,7 +92,7 @@ function AgendarCitaForm() {
     setForm(f => ({ ...f, [name]: value }));
   };
 
-  // 🔹 Buscar paciente por expediente o nombre
+  
   const buscarPaciente = async () => {
     if (!busqueda.trim()) return alert("Ingrese expediente o nombre");
     setBuscando(true);
@@ -110,10 +102,10 @@ function AgendarCitaForm() {
     try {
       let q;
       if (/^\d+$/.test(busqueda.trim())) {
-        // por expediente
+    
         q = query(collection(db, "pacientes"), where("expediente", "==", busqueda.trim()));
       } else {
-        // por nombre exacto
+        
         q = query(collection(db, "pacientes"), where("nombre", "==", busqueda.trim()));
       }
       const snap = await getDocs(q);
@@ -130,7 +122,6 @@ function AgendarCitaForm() {
     }
   };
 
-// 🔹 Agendar cita
 const agendarCita = async e => {
   e.preventDefault();
   if (!paciente) return alert("Primero busca un paciente");
@@ -155,11 +146,11 @@ const agendarCita = async e => {
       sintomas: form.sintomas,
       motivo: form.motivo,
       prioridad: form.prioridad,
-      estado: "en_espera", // ⚡ la cita queda en espera
+      estado: "en_espera", 
       createdAt: serverTimestamp(),
     });
 
-    // Marcar horario como ocupado
+
     await updateDoc(doctorRef, {
       horariosOcupados: arrayUnion({
         fecha: form.fecha,
@@ -167,7 +158,7 @@ const agendarCita = async e => {
       }),
     });
 
-    // ⚡ Actualizar paciente: marcar en lista de espera
+    // Actualizar paciente: marcar en lista de espera
     const pacRef = doc(db, "pacientes", paciente.id);
     await updateDoc(pacRef, {
       enEspera: true,

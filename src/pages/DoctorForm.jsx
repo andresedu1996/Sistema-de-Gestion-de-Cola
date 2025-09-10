@@ -12,6 +12,7 @@ import {
   arrayUnion,
   arrayRemove,
   serverTimestamp,
+  where,
 } from "firebase/firestore";
 
 function AgendarCitaForm() {
@@ -21,7 +22,7 @@ function AgendarCitaForm() {
   const [paciente, setPaciente] = useState(null);
 
   const [doctores, setDoctores] = useState([]);
-  const [cargandoDoctores, setCargandoDoctores] = useState(true);
+  // const [cargandoDoctores, setCargandoDoctores] = useState(true);
 
   const [form, setForm] = useState({
     fechaHora: "",
@@ -35,7 +36,6 @@ function AgendarCitaForm() {
 
   const [agendando, setAgendando] = useState(false);
 
-  // 🔹 Cargar doctores y preparar horarios disponibles
   useEffect(() => {
     const cargarDoctores = async () => {
       try {
@@ -46,7 +46,6 @@ function AgendarCitaForm() {
             const data = d.data();
             const doctorRef = doc(db, "doctores", d.id);
 
-            // inicializar horariosDisponibles y horariosOcupados si no existen
             if (!data.horariosDisponibles || !data.horariosOcupados) {
               await updateDoc(doctorRef, {
                 horariosDisponibles: data.horarios || [],
@@ -71,7 +70,7 @@ function AgendarCitaForm() {
         console.error(err);
         alert("No se pudieron cargar los doctores.");
       } finally {
-        setCargandoDoctores(false);
+        // setCargandoDoctores(false);
       }
     };
     cargarDoctores();
@@ -98,7 +97,7 @@ function AgendarCitaForm() {
     setForm((f) => ({ ...f, [name]: value }));
   };
 
-  // 🔹 Buscar paciente por expediente o nombre
+  //Buscar paciente por expediente o nombre
   const buscarPaciente = async (e) => {
     e?.preventDefault?.();
     if (!busqueda.trim()) {
@@ -142,7 +141,7 @@ function AgendarCitaForm() {
     }
   };
 
-  // 🔹 Agendar cita
+  //Agendar cita
   const agendarCita = async (e) => {
     e.preventDefault();
     if (!paciente) {
