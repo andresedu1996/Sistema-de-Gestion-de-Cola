@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { FaUserPlus, FaEdit, FaListUl, FaUserMd, FaArrowLeft } from "react-icons/fa"; 
+import { FaUserPlus, FaEdit, FaListUl, FaUserMd, FaCalendarAlt, FaArrowLeft } from "react-icons/fa"; 
 import ListaPacientes from "./ListaPacientes";
 import ListaDoctores from "./ListaDoctores";
 import PacienteForm from "./PacienteForm";
 import ModificarExpediente from "./ModificarExpediente";
+import Citas from "./Citas"; // <-- Importa la nueva pantalla
 
 function Home() {
   const [activeTab, setActiveTab] = useState("inicio");
@@ -106,6 +107,21 @@ function Home() {
                     </div>
                   </div>
                 </div>
+
+                {/* Card Asignar Cita */}
+                <div className="col-md-3">
+                  <div
+                    className="card text-center h-100 shadow"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => setActiveTab("citas")}
+                  >
+                    <div className="card-body">
+                      <FaCalendarAlt size={40} className="mb-3 text-danger" />
+                      <h5 className="card-title">Asignar Cita</h5>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>
@@ -126,6 +142,7 @@ function Home() {
             {activeTab === "modificar" && <ModificarExpediente />}
             {activeTab === "listaPacientes" && <ListaPacientes />}
             {activeTab === "listaDoctores" && <ListaDoctores />}
+            {activeTab === "citas" && <Citas />} {/* <-- Nueva pantalla */}
           </div>
         )}
       </main>
