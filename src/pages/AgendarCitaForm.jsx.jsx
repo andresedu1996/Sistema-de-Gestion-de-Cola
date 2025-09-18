@@ -21,7 +21,7 @@ function AgendarCitaForm() {
   const [noEncontrado, setNoEncontrado] = useState(false);
 
   const [doctores, setDoctores] = useState([]);
-  const [citas, setCitas] = useState([]); // Todas las citas en espera
+  const [citas, setCitas] = useState([]); //para todas las citas en espera
 
   const [form, setForm] = useState({
     area: "",
@@ -55,7 +55,7 @@ function AgendarCitaForm() {
     cargarDoctores();
   }, []);
 
-  // Escuchar todas las citas en espera
+  //Consultar todas las citas en espera
   useEffect(() => {
     const qCitas = query(collection(db, "citas"), where("estado", "==", "en_espera"));
     const unsub = onSnapshot(qCitas, (snap) => {
@@ -75,7 +75,7 @@ function AgendarCitaForm() {
     return doctores.filter((d) => (d.area || "").trim() === form.area);
   }, [doctores, form.area]);
 
-  // Horarios disponibles considerando citas existentes
+  //Horarios disponibles considerando citas existentes
   const horariosDisponiblesDelDoctor = useMemo(() => {
     if (!form.doctorId || !form.fecha) return [];
     const selDoctor = doctores.find((d) => d.id === form.doctorId);
@@ -148,7 +148,7 @@ function AgendarCitaForm() {
       await setDoc(citaRef, {
         pacienteId: paciente.id,
         pacienteNombre: paciente.nombre,
-        pacienteEdad: paciente.edad, // incluimos edad para mostrarla en la lista
+        pacienteEdad: paciente.edad,
         area: form.area,
         doctorId: selDoctor.id,
         doctorNombre: selDoctor.nombre,
@@ -161,7 +161,7 @@ function AgendarCitaForm() {
         createdAt: serverTimestamp(),
       });
 
-      // Actualizar paciente: marcar en lista de espera
+      //Actualizar paciente: marcar en lista de espera
       const pacRef = doc(db, "pacientes", paciente.id);
       await updateDoc(pacRef, {
         enEspera: true,
@@ -169,7 +169,7 @@ function AgendarCitaForm() {
         ultimaCitaFecha: form.fecha,
       });
 
-      alert("✅ Cita agendada y paciente enviado a lista de espera");
+      alert(" Cita agendada y paciente enviado a lista de espera");
 
       // Reset formulario
       setForm({
@@ -324,5 +324,4 @@ function AgendarCitaForm() {
     </div>
   );
 }
-
 export default AgendarCitaForm;
