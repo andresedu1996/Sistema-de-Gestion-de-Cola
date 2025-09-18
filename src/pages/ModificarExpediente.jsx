@@ -1,4 +1,3 @@
-// src/pages/ModificarExpediente.jsx
 import React, { useState, useEffect } from "react";
 import { db } from "../firebase";
 import {
@@ -40,13 +39,11 @@ function ModificarExpediente() {
     try {
       let qPacientes;
       if (/^\d+$/.test(busqueda.trim())) {
-        // buscar por expediente
         qPacientes = query(
           collection(db, "pacientes"),
           where("expediente", "==", busqueda.trim())
         );
       } else {
-        // buscar por nombre exacto
         qPacientes = query(
           collection(db, "pacientes"),
           where("nombre", "==", busqueda.trim())
@@ -63,7 +60,6 @@ function ModificarExpediente() {
       const pacData = snap.docs[0];
       setPaciente({ id: pacData.id, ...pacData.data() });
 
-      // Cargar citas en_espera de este paciente
       const qCitas = query(
         collection(db, "citas"),
         where("estado", "==", "en_espera"),
@@ -74,42 +70,65 @@ function ModificarExpediente() {
       setCitas(citasData);
     } catch (err) {
       console.error(err);
-      setError("Error buscando paciente. Revisa la consola.");
+      setError("Error buscando paciente.");
     } finally {
       setLoading(false);
     }
   };
 
   const guardarCambiosCita = async (citaId, cambios) => {
+    const citaOriginal = citas.find(c => c.id === citaId);
+    const prioridadAnterior = citaOriginal.prioridad;
+    const prioridadNueva = cambios.prioridad;
+
+    // Confirmar cambio de prioridad
+    if (prioridadNueva && prioridadAnterior !== prioridadNueva) {
+      const confirmacion = window.confirm(
+        `¿Está a punto de cambiar prioridad de ${prioridadAnterior.toUpperCase()} a ${prioridadNueva.toUpperCase()}?\n\n` 
+      + '¿Desea continuar?');
+      if (!confirmacion) {
+        return;
+      }
+    }
+
     try {
       const citaRef = doc(db, "citas", citaId);
       const updates = {
         ...cambios,
         updatedAt: serverTimestamp(),
       };
+      
       if (cambios.atendido) {
         updates.estado = "atendida";
         updates.atendidoAt = serverTimestamp();
       }
+      
       await updateDoc(citaRef, updates);
 
-      // Actualizar estado en el frontend
       setCitas((prev) =>
         prev.map((c) => (c.id === citaId ? { ...c, ...updates } : c))
       );
 
-      alert("✅ Cita actualizada correctamente");
+      if (prioridadNueva && prioridadAnterior !== prioridadNueva) {
+        alert(
+          `Prioridad actualizada correctamente!\n\n` +
+          `Cambio de prioridad: ${prioridadAnterior.toUpperCase()} →${prioridadNueva.toUpperCase()}\n\n` +
+          `El sistema ha reordenado al paciente en la cola.`
+        );
+      } else {
+        alert("Cita actualizada correctamente");
+      }
+      
     } catch (err) {
       console.error(err);
-      alert("❌ Error al actualizar cita. Revisa la consola");
+      alert("Error al actualizar cita. Revisa la consola");
     }
   };
 
   return (
     <div style={{ maxWidth: 700, margin: "0 auto" }}>
-      <h2 className="text-center mb-3">Modificar Citas</h2>
+      <h2 className="text-center mb-3">Modificar Citas / Cambiar Prioridades</h2>
 
-      {/* Búsqueda */}
       <div className="input-group mb-3">
         <input
           type="text"
@@ -123,7 +142,7 @@ function ModificarExpediente() {
           onClick={buscarPaciente}
           disabled={loading}
         >
-          {loading ? "Buscando…" : "Buscar"}
+          {loading ? "Buscando..." : "Buscar"}
         </button>
         <button className="btn btn-outline-secondary" onClick={limpiarBusqueda}>
           Limpiar
@@ -132,28 +151,35 @@ function ModificarExpediente() {
 
       {error && <div className="alert alert-danger">{error}</div>}
 
-      {/* Info paciente */}
       {paciente && (
         <div className="card mb-3">
           <div className="card-body">
-            <p>
-              <strong>Expediente:</strong> {paciente.expediente}
-            </p>
-            <p>
-              <strong>Nombre:</strong> {paciente.nombre}
-            </p>
+            <p><strong>Expediente:</strong> {paciente.expediente}</p>
+            <p><strong>Nombre:</strong> {paciente.nombre}</p>
             {paciente.fechaNacimiento && (
-              <p>
-                <strong>Fecha Nac.:</strong> {paciente.fechaNacimiento}
-              </p>
+              <p><strong>Fecha Nac.:</strong> {paciente.fechaNacimiento}</p>
             )}
           </div>
         </div>
       )}
 
-      {/* Lista de citas */}
+      <div className="alert alert-info">
+        <h6>Cambio de Prioridades:</h6>
+        <small>
+          <strong>ALTA:</strong> Se atiende primero (en casos urgentes)<br/>
+          <strong>MEDIA:</strong> Se atiende después de prioridad alta<br/>
+          <strong>BAJA:</strong> Se atiende al final (no tan urgentes)
+        </small>
+      </div>
+
       {citas.length > 0 ? (
-        citas.map((cita) => <CitaForm key={cita.id} cita={cita} onGuardar={guardarCambiosCita} />)
+        citas.map((cita) => (
+          <CitaForm 
+            key={cita.id} 
+            cita={cita} 
+            onGuardar={guardarCambiosCita} 
+          />
+        ))
       ) : paciente ? (
         <div className="alert alert-info">No hay citas en espera para este paciente</div>
       ) : null}
@@ -168,6 +194,16 @@ function CitaForm({ cita, onGuardar }) {
   const [atendido, setAtendido] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const getPrioridadColor = (prioridad) => {
+    switch(prioridad) {
+      case "alta": return "danger";
+      case "media": return "warning";
+      case "baja": return "primary";
+      default: return "secondary";
+    }
+  };
+
+  const prioridadCambio = prioridad !== cita.prioridad;
   const handleGuardar = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -178,74 +214,86 @@ function CitaForm({ cita, onGuardar }) {
   return (
     <form
       onSubmit={handleGuardar}
-      className="border rounded p-3 mb-3 bg-dark bg-opacity-50"
+      className={`border rounded p-3 mb-3 bg-dark bg-opacity-50 ${prioridadCambio ? 'border-warning border-3' : ''}`}
     >
-      <div className="mb-2">
-        <strong>Doctor:</strong> {cita.doctorNombre}
-      </div>
-      <div className="mb-2">
-        <strong>Área:</strong> {cita.area}
-      </div>
-      <div className="mb-2">
-        <strong>Fecha:</strong> {cita.fecha}
-      </div>
-      <div className="mb-2">
-        <strong>Horario:</strong> {cita.horario}
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h5 className="mb-0">Cita en Espera</h5>
+        <span className={`badge bg-${getPrioridadColor(cita.prioridad)} px-3 py-2`}>
+          PRIORIDAD ACTUAL: {cita.prioridad.toUpperCase()}
+        </span>
       </div>
 
-      <div className="mb-2">
-        <label className="form-label">Síntomas</label>
-        <input
-          className="form-control"
-          value={sintomas}
-          onChange={(e) => setSintomas(e.target.value)}
-          disabled={saving}
-        />
+      <div className="row mb-3">
+        <div className="col-md-6">
+          <strong>Doctor:</strong> {cita.doctorNombre}
+        </div>
+        <div className="col-md-6">
+          <strong>Área:</strong> {cita.area}
+        </div>
+        <div className="col-md-6">
+          <strong>Fecha:</strong> {cita.fecha}
+        </div>
+        <div className="col-md-6">
+          <strong>Horario:</strong> {cita.horario}
+        </div>
       </div>
 
-      <div className="mb-2">
-        <label className="form-label">Motivo</label>
-        <input
-          className="form-control"
-          value={motivo}
-          onChange={(e) => setMotivo(e.target.value)}
-          disabled={saving}
-        />
+      <div className="row mb-3">
+        <div className="col-md-6">
+          <label className="form-label">Síntomas</label>
+          <input
+            className="form-control"
+            value={sintomas}
+            onChange={(e) => setSintomas(e.target.value)}
+            disabled={saving}
+          />
+        </div>
+        <div className="col-md-6">
+          <label className="form-label">Motivo</label>
+          <input
+            className="form-control"
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            disabled={saving}
+          />
+        </div>
       </div>
 
-      <div className="mb-2">
-        <label className="form-label">Prioridad</label>
-        <select
-          className="form-select"
-          value={prioridad}
-          onChange={(e) => setPrioridad(e.target.value)}
-          disabled={saving}
-        >
-          <option value="alta">Alta</option>
-          <option value="media">Media</option>
-          <option value="baja">Baja</option>
-        </select>
+      <div className="row mb-3">
+        <div className="col-md-8">
+          <label className="form-label">
+            Prioridad 
+            {prioridadCambio && (
+              <span className="text-warning ms-2">
+                (Cambio: {cita.prioridad.toUpperCase()} → {prioridad.toUpperCase()})
+              </span>
+            )}
+          </label>
+          <select
+            className={`form-select ${prioridadCambio ? 'border-warning border-2' : ''}`}
+            value={prioridad}
+            onChange={(e) => setPrioridad(e.target.value)}
+            disabled={saving}
+          >
+            <option value="alta">ALTA - Urgente</option>
+            <option value="media">MEDIA - Normal</option>
+            <option value="baja">BAJA - No urgente</option>
+          </select>
+        </div>
+        <div className="col-md-4 d-flex align-items-end">
+          <div className="form-check">
+          </div>
+        </div>
       </div>
 
-      <div className="form-check mb-2">
-        <input
-          type="checkbox"
-          className="form-check-input"
-          id={`atendido-${cita.id}`}
-          checked={atendido}
-          onChange={(e) => setAtendido(e.target.checked)}
-          disabled={saving}
-        />
-        <label className="form-check-label" htmlFor={`atendido-${cita.id}`}>
-          Marcar como atendido
-        </label>
-      </div>
-
-      <button className="btn btn-success w-100" type="submit" disabled={saving}>
-        {saving ? "Guardando…" : "Guardar Cambios"}
+      <button 
+        className={`btn w-100 ${prioridadCambio ? 'btn-warning' : 'btn-success'}`}
+        type="submit" 
+        disabled={saving}
+      >
+        {saving ? "Guardando informacion..." : prioridadCambio ? "GUARDAR Y CAMBIAR PRIORIDAD" : "Guardar Cambios"}
       </button>
     </form>
   );
 }
-
 export default ModificarExpediente;
