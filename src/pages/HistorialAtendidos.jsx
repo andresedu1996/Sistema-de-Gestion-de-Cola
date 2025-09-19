@@ -46,15 +46,15 @@ class ListaDoblementeEnlazada {
 
 function HistorialAtendidos() {
   const [cargando, setCargando] = useState(true);
-  const [actual, setActual] = useState(null); 
-  const listaRef = useRef(new ListaDoblementeEnlazada());
-  const nodosMapRef = useRef(new Map());
+  const [nodoActual, setNodoActual] = useState(null); 
+  const listaHistorialRef = useRef(new ListaDoblementeEnlazada());
+  const mapaNodosRef = useRef(new Map());
   const [longitud, setLongitud] = useState(0);
   const [historial, setHistorial] = useState([]); 
   const [busqueda, setBusqueda] = useState("");
   const [filtro, setFiltro] = useState("todas");
 
-  const getPrioridadColor = (prioridad) => {
+  const obtenerColorPrioridad = (prioridad) => {
     switch (prioridad) {
       case "alta":
         return { bg: "danger", text: "white" };
@@ -67,7 +67,7 @@ function HistorialAtendidos() {
     }
   };
 
-  const getPrioridadBorder = (prioridad) => {
+  const obtenerBordePrioridad = (prioridad) => {
     switch (prioridad) {
       case "alta":
         return "border-danger";
@@ -81,67 +81,67 @@ function HistorialAtendidos() {
   };
 
   useEffect(() => {
-    const q = query(collection(db, "citas"), where("estado", "==", "atendido"));
+    const consulta = query(collection(db, "citas"), where("estado", "==", "atendido"));
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const datos = snapshot.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
+    const desuscribirse = onSnapshot(consulta, (instantanea) => {
+      const registros = instantanea.docs
+        .map((docu) => ({ id: docu.id, ...docu.data() }))
         .sort((a, b) => {
-          const fa = (a.fechaAtencion?.toMillis?.() || a.createdAt?.toMillis?.() || 0);
-          const fb = (b.fechaAtencion?.toMillis?.() || b.createdAt?.toMillis?.() || 0);
-          return fb - fa; 
+          const fechaA = (a.fechaAtencion?.toMillis?.() || a.createdAt?.toMillis?.() || 0);
+          const fechaB = (b.fechaAtencion?.toMillis?.() || b.createdAt?.toMillis?.() || 0);
+          return fechaB - fechaA; 
         });
 
       const lista = new ListaDoblementeEnlazada();
-      const nodosMap = new Map();
+      const mapaNodos = new Map();
       let primerNodo = null;
-      datos.forEach((item, idx) => {
-        const nodo = lista.push(item);
-        nodosMap.set(item.id, nodo);
-        if (idx === 0) primerNodo = nodo;
+      registros.forEach((registro, indice) => {
+        const nodo = lista.push(registro);
+        mapaNodos.set(registro.id, nodo);
+        if (indice === 0) primerNodo = nodo;
       });
 
-      listaRef.current = lista;
-      nodosMapRef.current = nodosMap;
+      listaHistorialRef.current = lista;
+      mapaNodosRef.current = mapaNodos;
       setLongitud(lista.length);
-      setActual(primerNodo);
+      setNodoActual(primerNodo);
       setHistorial(lista.toArray());
       setCargando(false);
     });
 
-    return () => unsubscribe();
+    return () => desuscribirse();
   }, []);
 
-  const listaFiltrada = useMemo(() => {
-    const q = busqueda.trim().toLowerCase();
-    return historial.filter((item) => {
-      const pasaPrioridad = filtro === "todas" || (item.prioridad || "media") === filtro;
-      if (!pasaPrioridad) return false;
-      if (!q) return true;
-      const texto = `${item.pacienteNombre || ""} ${item.pacienteExpediente || item.pacienteId || ""} ${item.doctorNombre || ""} ${item.area || ""}`.toLowerCase();
-      return texto.includes(q);
+  const historialFiltrado = useMemo(() => {
+    const textoBusqueda = busqueda.trim().toLowerCase();
+    return historial.filter((registro) => {
+      const coincidePrioridad = filtro === "todas" || (registro.prioridad || "media") === filtro;
+      if (!coincidePrioridad) return false;
+      if (!textoBusqueda) return true;
+      const cadena = `${registro.pacienteNombre || ""} ${registro.pacienteExpediente || registro.pacienteId || ""} ${registro.doctorNombre || ""} ${registro.area || ""}`.toLowerCase();
+      return cadena.includes(textoBusqueda);
     });
   }, [historial, busqueda, filtro]);
 
   useEffect(() => {
-    if (!actual) return;
-    const actualId = actual?.valor?.id;
-    const sigueVisible = listaFiltrada.some((it) => it.id === actualId);
+    if (!nodoActual) return;
+    const idActual = nodoActual?.valor?.id;
+    const sigueVisible = historialFiltrado.some((reg) => reg.id === idActual);
     if (!sigueVisible) {
-      if (listaFiltrada.length > 0) {
-        const nodo = nodosMapRef.current.get(listaFiltrada[0].id);
-        setActual(nodo || null);
+      if (historialFiltrado.length > 0) {
+        const nodo = mapaNodosRef.current.get(historialFiltrado[0].id);
+        setNodoActual(nodo || null);
       } else {
-        setActual(null);
+        setNodoActual(null);
       }
     }
-  }, [listaFiltrada, actual]);
+  }, [historialFiltrado, nodoActual]);
 
   const moverAnterior = () => {
-    if (actual?.prev) setActual(actual.prev);
+    if (nodoActual?.prev) setNodoActual(nodoActual.prev);
   };
   const moverSiguiente = () => {
-    if (actual?.next) setActual(actual.next);
+    if (nodoActual?.next) setNodoActual(nodoActual.next);
   };
 
   const formatoFecha = (ts) => {
@@ -175,13 +175,13 @@ function HistorialAtendidos() {
             <option value="media">Media</option>
             <option value="baja">Baja</option>
           </select>
-          <span className="ms-auto text-muted small">Mostrando {listaFiltrada.length} de {longitud}</span>
+          <span className="ms-auto text-muted small">Mostrando {historialFiltrado.length} de {longitud}</span>
         </div>
       </div>
 
       {cargando ? (
         <div className="alert alert-secondary text-center">Cargando historial...</div>
-      ) : listaFiltrada.length === 0 ? (
+      ) : historialFiltrado.length === 0 ? (
         <div className="alert alert-info text-center">
           <h5>No hay resultados</h5>
           <p>Ajusta la búsqueda o filtros.</p>
@@ -195,27 +195,27 @@ function HistorialAtendidos() {
                 <strong>Historial</strong>
               </div>
               <div className="card-body" style={{ maxHeight: "65vh", overflowY: "auto" }}>
-                {listaFiltrada.map((item) => {
-                  const active = actual?.valor?.id === item.id;
-                  const colorInfo = getPrioridadColor(item.prioridad);
+                {historialFiltrado.map((registro) => {
+                  const estaSeleccionado = nodoActual?.valor?.id === registro.id;
+                  const infoColor = obtenerColorPrioridad(registro.prioridad);
                   return (
                     <div
-                      key={item.id}
-                      onClick={() => setActual(nodosMapRef.current.get(item.id) || actual)}
-                      className={`d-flex justify-content-between align-items-center p-3 rounded mb-2 border ${active ? "border-primary bg-light" : "border-light"}`}
+                      key={registro.id}
+                      onClick={() => setNodoActual(mapaNodosRef.current.get(registro.id) || nodoActual)}
+                      className={`d-flex justify-content-between align-items-center p-3 rounded mb-2 border ${estaSeleccionado ? "border-primary bg-light" : "border-light"}`}
                       style={{ cursor: "pointer" }}
                     >
                       <div>
                         <div className="fw-semibold">
-                          {item.pacienteNombre}
-                          {active && <span className="badge bg-primary ms-2">Seleccionado</span>}
+                          {registro.pacienteNombre}
+                          {estaSeleccionado && <span className="badge bg-primary ms-2">Seleccionado</span>}
                         </div>
                         <div className="text-muted small">
-                          {item.area || ""} · Dr. {item.doctorNombre || ""}
+                          {registro.area || ""} · Dr. {registro.doctorNombre || ""}
                         </div>
-                        <div className="text-muted small">{formatoFecha(item.fechaAtencion)}</div>
+                        <div className="text-muted small">{formatoFecha(registro.fechaAtencion)}</div>
                       </div>
-                      <span className={`badge bg-${colorInfo.bg} text-${colorInfo.text}`}>{(item.prioridad || "media").toUpperCase()}</span>
+                      <span className={`badge bg-${infoColor.bg} text-${infoColor.text}`}>{(registro.prioridad || "media").toUpperCase()}</span>
                     </div>
                   );
                 })}
@@ -225,41 +225,41 @@ function HistorialAtendidos() {
 
           {/* Card derecho para el detalle del seleccionado */}
           <div className="col-md-7">
-            {actual && (
-              <div className={`card ${getPrioridadBorder(actual.valor.prioridad)} border-3`}>
-                <div className={`card-header bg-${getPrioridadColor(actual.valor.prioridad).bg} text-${getPrioridadColor(actual.valor.prioridad).text}`}>
+            {nodoActual && (
+              <div className={`card ${obtenerBordePrioridad(nodoActual.valor.prioridad)} border-3`}>
+                <div className={`card-header bg-${obtenerColorPrioridad(nodoActual.valor.prioridad).bg} text-${obtenerColorPrioridad(nodoActual.valor.prioridad).text}`}>
                   <div className="d-flex justify-content-between align-items-center">
                     <h4 className="mb-0">Detalle del paciente</h4>
-                    <span className="fs-6">PRIORIDAD {(actual.valor.prioridad || "media").toUpperCase()}</span>
+                    <span className="fs-6">PRIORIDAD {(nodoActual.valor.prioridad || "media").toUpperCase()}</span>
                   </div>
                 </div>
                 <div className="card-body">
                   <div className="row">
                     <div className="col-12">
-                      <h5 className="text-primary mb-2">{actual.valor.pacienteNombre}</h5>
+                      <h5 className="text-primary mb-2">{nodoActual.valor.pacienteNombre}</h5>
                       <div className="row g-2">
-                        <div className="col-sm-6"><strong>Expediente:</strong> {actual.valor.pacienteExpediente || actual.valor.pacienteId}</div>
-                        <div className="col-sm-6"><strong>Doctor:</strong> {actual.valor.doctorNombre}</div>
-                        <div className="col-sm-6"><strong>Área:</strong> {actual.valor.area || "No disponible"}</div>
-                        <div className="col-sm-6"><strong>Atendido:</strong> {formatoFecha(actual.valor.fechaAtencion)}</div>
+                        <div className="col-sm-6"><strong>Expediente:</strong> {nodoActual.valor.pacienteExpediente || nodoActual.valor.pacienteId}</div>
+                        <div className="col-sm-6"><strong>Doctor:</strong> {nodoActual.valor.doctorNombre}</div>
+                        <div className="col-sm-6"><strong>Área:</strong> {nodoActual.valor.area || "No disponible"}</div>
+                        <div className="col-sm-6"><strong>Atendido:</strong> {formatoFecha(nodoActual.valor.fechaAtencion)}</div>
                       </div>
 
-                      {actual.valor.sintomas && (
+                      {nodoActual.valor.sintomas && (
                         <div className="mt-3 p-3 bg-light rounded">
                           <strong>Síntomas:</strong>
-                          <p className="mb-0 mt-1">{actual.valor.sintomas}</p>
+                          <p className="mb-0 mt-1">{nodoActual.valor.sintomas}</p>
                         </div>
                       )}
-                      {actual.valor.motivo && (
+                      {nodoActual.valor.motivo && (
                         <div className="mt-2 p-3 bg-light rounded">
                           <strong>Motivo:</strong>
-                          <p className="mb-0 mt-1">{actual.valor.motivo}</p>
+                          <p className="mb-0 mt-1">{nodoActual.valor.motivo}</p>
                         </div>
                       )}
 
                       <div className="d-flex gap-2 mt-4">
-                        <button className="btn btn-outline-secondary w-50" onClick={moverAnterior} disabled={!actual.prev}>← Anterior</button>
-                        <button className="btn btn-success w-50" onClick={moverSiguiente} disabled={!actual.next}>Siguiente →</button>
+                        <button className="btn btn-outline-secondary w-50" onClick={moverAnterior} disabled={!nodoActual.prev}>← Anterior</button>
+                        <button className="btn btn-success w-50" onClick={moverSiguiente} disabled={!nodoActual.next}>Siguiente →</button>
                       </div>
                     </div>
                   </div>
