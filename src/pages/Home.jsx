@@ -7,6 +7,7 @@ import {
   FaArrowLeft,
   FaCalendarAlt,
   FaUserCheck,
+  FaHistory,
 } from "react-icons/fa";
 
 import ListaPacientes from "./ListaPacientes.jsx";
@@ -15,6 +16,7 @@ import PacienteForm from "./PacienteForm.jsx";
 import ModificarExpediente from "./ModificarExpediente.jsx";
 import AgendarCitaForm from "./AgendarCitaForm.jsx";
 import AtenderPaciente from "./AtenderPaciente.jsx";
+import HistorialAtendidos from "./HistorialAtendidos.jsx";
 
 function Home() {
   const [activeTab, setActiveTab] = useState("inicio");
@@ -133,6 +135,22 @@ function Home() {
                   </div>
                 </div>
 
+                {/* Card Historial Atendidos */}
+                <div className="col-md-3">
+                  <div
+                    className="card text-center h-100 shadow-lg"
+                    style={cardBaseStyle}
+                    onClick={() => setActiveTab("historial")}
+                    onMouseEnter={handleMouseEnter}
+                    onMouseLeave={handleMouseLeave}
+                  >
+                    <div className="card-body">
+                      <FaHistory size={40} className="mb-3 text-success" />
+                      <h5 className="card-title">Historial</h5>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Card Modificar Expediente */}
                 <div className="col-md-3">
                   <div
@@ -200,6 +218,7 @@ function Home() {
             {activeTab === "listaDoctores" && <ListaDoctores />}
             {activeTab === "agendar" && <AgendarCitaForm />}
             {activeTab === "atender" && <AtenderPaciente />}
+            {activeTab === "historial" && <HistorialAtendidos />}
           </div>
         )}
       </main>
