@@ -4,7 +4,6 @@
 ![Interfaz](https://img.shields.io/badge/Interfaz-Web-success)
 ![Estructuras](https://img.shields.io/badge/Estructuras-Firestore__%7C__Ordenaci%C3%B3n__por__prioridad__%7C__Lista__doblemente__enlazada-6f42c1)
 ![Validación](https://img.shields.io/badge/Validaci%C3%B3n-Entradas_y_Errores-important)
-![Licencia](https://img.shields.io/badge/Licencia-MIT-lightgrey)
 
 # Sistema de Gestión de Cola
 
